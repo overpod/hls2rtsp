@@ -59,10 +59,13 @@ services:
     volumes:
       - ./config.yaml:/etc/hls2rtsp/config.yaml:ro
     ports:
-      - "8554:8554"
-      - "8000:8000/udp"
-      - "8001:8001/udp"
+      - "8554:8554"         # RTSP (TCP)
+      - "8000:8000/udp"     # RTP (optional, for UDP transport)
+      - "8001:8001/udp"     # RTCP (optional, for UDP transport)
 ```
+
+> **Note:** UDP ports 8000/8001 are only needed if RTSP clients request UDP transport.
+> Most clients (VLC, ffplay) use TCP interleaved by default — in that case only port 8554 is required.
 
 ## Configuration
 
