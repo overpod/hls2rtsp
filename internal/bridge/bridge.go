@@ -111,8 +111,13 @@ func (b *Bridge) run(ctx context.Context) error {
 		return fmt.Errorf("HLS start: %w", err)
 	}
 
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- client.Wait2()
+	}()
+
 	select {
-	case err := <-client.Wait():
+	case err := <-errCh:
 		client.Close()
 		return err
 	case <-ctx.Done():
