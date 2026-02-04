@@ -1,0 +1,18 @@
+server:
+  port: "8554"
+
+auth:
+  enabled: true
+  username: admin
+  password: admin
+
+streams:
+  camera1:
+    url: https://example.com/stream1/mono.m3u8
+
+  camera2:
+    url: https://example.com/stream2/mono.m3u8
+
+metrics:
+  enabled: true
+  interval: 30s

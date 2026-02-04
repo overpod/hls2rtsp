@@ -1,0 +1,11 @@
+services:
+  hls2rtsp:
+    build: .
+    container_name: hls2rtsp
+    restart: unless-stopped
+    volumes:
+      - ./config.yaml:/etc/hls2rtsp/config.yaml:ro
+    ports:
+      - "8554:8554"
+      - "8000:8000/udp"
+      - "8001:8001/udp"
