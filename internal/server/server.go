@@ -2,7 +2,7 @@ package server
 
 import (
 	"encoding/base64"
-	"log"
+	"log/slog"
 	"strings"
 	"sync"
 
@@ -45,9 +45,9 @@ func New(port string, authEnabled bool, username, password string) *Server {
 }
 
 func (s *Server) Start() error {
-	log.Printf("[rtsp] starting on :%s", s.server.RTSPAddress)
+	slog.Info("RTSP server starting", "address", s.server.RTSPAddress)
 	if s.authEnabled {
-		log.Printf("[rtsp] authentication enabled (user: %s)", s.authUsername)
+		slog.Info("authentication enabled", "username", s.authUsername)
 	}
 	return s.server.Start()
 }
@@ -65,9 +65,15 @@ func (s *Server) AddStream(path string, desc *description.Session) *gortsplib.Se
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	key := "/" + path
+	if old, ok := s.streams[key]; ok {
+		old.stream.Close()
+		slog.Info("replaced existing stream", "path", key)
+	}
+
 	stream := gortsplib.NewServerStream(s.server, desc)
-	s.streams["/"+path] = &streamEntry{stream: stream}
-	log.Printf("[rtsp] stream registered: /%s", path)
+	s.streams[key] = &streamEntry{stream: stream}
+	slog.Info("stream registered", "path", key)
 	return stream
 }
 
@@ -120,11 +126,11 @@ func (s *Server) unauthorizedResponse() *base.Response {
 // --- gortsplib ServerHandler interfaces ---
 
 func (s *Server) OnConnOpen(ctx *gortsplib.ServerHandlerOnConnOpenCtx) {
-	log.Printf("[rtsp] client connected: %s", ctx.Conn.NetConn().RemoteAddr())
+	slog.Info("client connected", "remote", ctx.Conn.NetConn().RemoteAddr())
 }
 
 func (s *Server) OnConnClose(ctx *gortsplib.ServerHandlerOnConnCloseCtx) {
-	log.Printf("[rtsp] client disconnected: %v", ctx.Error)
+	slog.Info("client disconnected", "error", ctx.Error)
 }
 
 func (s *Server) OnSessionOpen(_ *gortsplib.ServerHandlerOnSessionOpenCtx) {}
@@ -158,6 +164,6 @@ func (s *Server) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response
 }
 
 func (s *Server) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error) {
-	log.Printf("[rtsp] playback started: %s", ctx.Path)
+	slog.Info("playback started", "path", ctx.Path)
 	return &base.Response{StatusCode: base.StatusOK}, nil
 }

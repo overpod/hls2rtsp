@@ -1,7 +1,7 @@
 package metrics
 
 import (
-	"log"
+	"log/slog"
 	"math"
 	"sync"
 	"time"
@@ -102,8 +102,16 @@ func (m *Metrics) printReport() {
 	cv := stddev(m.ptsDeltas) / avgDelta
 	smoothness := int(math.Max(0, math.Min(100, (1-cv)*100)))
 
-	log.Printf("[%s] frames=%d fps=%.1f jitter=%.2fms drift=%.1fms drift_max=%.1fms gaps=%d smooth=%d/100",
-		m.name, m.frameCount, fps, jitter, avgDrift, maxDrift, gaps, smoothness)
+	slog.Info("stream metrics",
+		"stream", m.name,
+		"frames", m.frameCount,
+		"fps", math.Round(fps*10)/10,
+		"jitter_ms", math.Round(jitter*100)/100,
+		"drift_ms", math.Round(avgDrift*10)/10,
+		"drift_max_ms", math.Round(maxDrift*10)/10,
+		"gaps", gaps,
+		"smoothness", smoothness,
+	)
 
 	if n > 300 {
 		m.ptsDeltas = m.ptsDeltas[n-300:]

@@ -2,9 +2,10 @@ package main
 
 import (
 	"flag"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/overpod/hls2rtsp/internal/bridge"
@@ -17,19 +18,25 @@ var version = "dev"
 func main() {
 	configPath := flag.String("config", "config.yaml", "path to config file")
 	showVersion := flag.Bool("version", false, "show version and exit")
+	logJSON := flag.Bool("log-json", false, "output logs in JSON format")
 	flag.Parse()
 
+	if *logJSON {
+		slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+	}
+
 	if *showVersion {
-		log.Printf("hls2rtsp %s", version)
+		slog.Info("hls2rtsp", "version", version)
 		return
 	}
 
 	cfg, err := config.Load(*configPath)
 	if err != nil {
-		log.Fatalf("config: %v", err)
+		slog.Error("config load failed", "error", err)
+		os.Exit(1)
 	}
 
-	log.Printf("hls2rtsp %s starting (%d streams)", version, len(cfg.Streams))
+	slog.Info("hls2rtsp starting", "version", version, "streams", len(cfg.Streams))
 
 	srv := server.New(
 		cfg.Server.Port,
@@ -39,7 +46,8 @@ func main() {
 	)
 
 	if err := srv.Start(); err != nil {
-		log.Fatalf("RTSP server: %v", err)
+		slog.Error("RTSP server failed to start", "error", err)
+		os.Exit(1)
 	}
 	defer srv.Close()
 
@@ -57,22 +65,31 @@ func main() {
 		bridges = append(bridges, b)
 
 		if cfg.Auth.Enabled {
-			log.Printf("  /%s → rtsp://%s:%s@localhost:%s/%s",
-				name, cfg.Auth.Username, cfg.Auth.Password, cfg.Server.Port, name)
+			slog.Info("stream configured",
+				"path", "/"+name,
+				"rtsp", "rtsp://"+cfg.Auth.Username+":***@localhost:"+cfg.Server.Port+"/"+name)
 		} else {
-			log.Printf("  /%s → rtsp://localhost:%s/%s", name, cfg.Server.Port, name)
+			slog.Info("stream configured",
+				"path", "/"+name,
+				"rtsp", "rtsp://localhost:"+cfg.Server.Port+"/"+name)
 		}
 	}
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-	log.Printf("hls2rtsp running, press Ctrl+C to stop")
+	slog.Info("hls2rtsp running, press Ctrl+C to stop")
 
 	<-sigCh
-	log.Printf("shutting down...")
+	slog.Info("shutting down...")
 
+	var wg sync.WaitGroup
 	for _, b := range bridges {
-		b.Close()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			b.Close()
+		}()
 	}
+	wg.Wait()
 }

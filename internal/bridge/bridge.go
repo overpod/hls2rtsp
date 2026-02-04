@@ -3,7 +3,7 @@ package bridge
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -24,6 +24,7 @@ type Bridge struct {
 	hlsURL  string
 	server  *server.Server
 	metrics *metrics.Metrics
+	log     *slog.Logger
 
 	metricsEnabled  bool
 	metricsInterval time.Duration
@@ -44,6 +45,7 @@ func New(name, hlsURL string, srv *server.Server, metricsEnabled bool, metricsIn
 		name:            name,
 		hlsURL:          hlsURL,
 		server:          srv,
+		log:             slog.Default().With("stream", name),
 		metricsEnabled:  metricsEnabled,
 		metricsInterval: metricsInterval,
 		done:            make(chan struct{}),
@@ -70,14 +72,14 @@ func (b *Bridge) runLoop(ctx context.Context) {
 	defer close(b.done)
 
 	for {
-		log.Printf("[%s] connecting to HLS: %s", b.name, b.hlsURL)
+		b.log.Info("connecting to HLS", "url", b.hlsURL)
 
 		err := b.run(ctx)
 		if ctx.Err() != nil {
 			return
 		}
 
-		log.Printf("[%s] HLS disconnected: %v, reconnecting in 5s...", b.name, err)
+		b.log.Warn("HLS disconnected, reconnecting in 5s", "error", err)
 
 		select {
 		case <-time.After(5 * time.Second):
@@ -90,6 +92,8 @@ func (b *Bridge) runLoop(ctx context.Context) {
 func (b *Bridge) run(ctx context.Context) error {
 	b.mu.Lock()
 	b.initialized = false
+	b.stream = nil
+	b.encoder = nil
 	b.mu.Unlock()
 
 	if b.metricsEnabled && b.metrics == nil {
@@ -103,7 +107,7 @@ func (b *Bridge) run(ctx context.Context) error {
 			return b.onTracks(tracks, client)
 		},
 		OnDecodeError: func(err error) {
-			log.Printf("[%s] decode error: %v", b.name, err)
+			b.log.Warn("decode error", "error", err)
 		},
 	}
 
@@ -132,7 +136,7 @@ func (b *Bridge) onTracks(tracks []*gohlslib.Track, client *gohlslib.Client) err
 			continue
 		}
 
-		log.Printf("[%s] found H264 track, waiting for SPS/PPS...", b.name)
+		b.log.Info("found H264 track, waiting for SPS/PPS")
 
 		ctrack := track
 		client.OnDataH26x(ctrack, func(pts int64, dts int64, au [][]byte) {
@@ -155,7 +159,7 @@ func (b *Bridge) onH264Data(pts int64, dts int64, au [][]byte) {
 			return
 		}
 
-		log.Printf("[%s] got SPS (%d bytes) and PPS (%d bytes)", b.name, len(sps), len(pps))
+		b.log.Info("got SPS/PPS", "sps_bytes", len(sps), "pps_bytes", len(pps))
 
 		b.h264Format = &format.H264{
 			PayloadTyp:        96,
@@ -171,7 +175,7 @@ func (b *Bridge) onH264Data(pts int64, dts int64, au [][]byte) {
 
 		encoder, err := b.h264Format.CreateEncoder()
 		if err != nil {
-			log.Printf("[%s] create encoder failed: %v", b.name, err)
+			b.log.Error("create encoder failed", "error", err)
 			b.mu.Unlock()
 			return
 		}
@@ -181,7 +185,7 @@ func (b *Bridge) onH264Data(pts int64, dts int64, au [][]byte) {
 		b.stream = b.server.AddStream(b.name, desc)
 		b.initialized = true
 
-		log.Printf("[%s] RTSP stream ready at /%s", b.name, b.name)
+		b.log.Info("RTSP stream ready", "path", "/"+b.name)
 	}
 
 	b.mu.Unlock()
