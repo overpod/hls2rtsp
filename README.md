@@ -1,5 +1,11 @@
 # hls2rtsp
 
+[![CI](https://github.com/overpod/hls2rtsp/actions/workflows/ci.yml/badge.svg)](https://github.com/overpod/hls2rtsp/actions/workflows/ci.yml)
+[![Release](https://github.com/overpod/hls2rtsp/actions/workflows/release.yml/badge.svg)](https://github.com/overpod/hls2rtsp/actions/workflows/release.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/overpod/hls2rtsp)](https://goreportcard.com/report/github.com/overpod/hls2rtsp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/overpod/hls2rtsp)](go.mod)
+
 Convert HLS streams to RTSP. Single binary, zero external dependencies (no FFmpeg, no MediaMTX).
 
 Built with [gohlslib](https://github.com/bluenviron/gohlslib) and [gortsplib](https://github.com/bluenviron/gortsplib).
