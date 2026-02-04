@@ -1,6 +1,6 @@
 services:
   hls2rtsp:
-    build: .
+    image: ghcr.io/overpod/hls2rtsp:latest
     container_name: hls2rtsp
     restart: unless-stopped
     volumes:
