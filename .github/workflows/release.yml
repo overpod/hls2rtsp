@@ -91,6 +91,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: dist
+          pattern: hls2rtsp-*
           merge-multiple: true
 
       - name: Create GitHub Release
