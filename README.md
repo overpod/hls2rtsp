@@ -29,13 +29,17 @@ cp config.example.yaml config.yaml
 ./hls2rtsp --config config.yaml
 ```
 
-### Docker
+### Docker (prebuilt image)
 
 ```bash
+# Create config
 cp config.example.yaml config.yaml
 # Edit config.yaml
 
-docker compose up -d
+docker run -d --name hls2rtsp \
+  -v $(pwd)/config.yaml:/etc/hls2rtsp/config.yaml:ro \
+  -p 8554:8554 \
+  ghcr.io/overpod/hls2rtsp:latest
 ```
 
 ### Docker Compose
@@ -43,9 +47,7 @@ docker compose up -d
 ```yaml
 services:
   hls2rtsp:
-    build: .
-    # or use a prebuilt image:
-    # image: ghcr.io/overpod/hls2rtsp:latest
+    image: ghcr.io/overpod/hls2rtsp:latest
     container_name: hls2rtsp
     restart: unless-stopped
     volumes:

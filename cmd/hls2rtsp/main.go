@@ -12,16 +12,24 @@ import (
 	"github.com/overpod/hls2rtsp/internal/server"
 )
 
+var version = "dev"
+
 func main() {
 	configPath := flag.String("config", "config.yaml", "path to config file")
+	showVersion := flag.Bool("version", false, "show version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		log.Printf("hls2rtsp %s", version)
+		return
+	}
 
 	cfg, err := config.Load(*configPath)
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
 
-	log.Printf("hls2rtsp starting (%d streams)", len(cfg.Streams))
+	log.Printf("hls2rtsp %s starting (%d streams)", version, len(cfg.Streams))
 
 	srv := server.New(
 		cfg.Server.Port,

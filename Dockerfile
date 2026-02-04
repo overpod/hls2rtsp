@@ -3,7 +3,8 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -o /hls2rtsp ./cmd/hls2rtsp
+ARG VERSION=dev
+RUN CGO_ENABLED=0 go build -ldflags "-s -w -X main.version=${VERSION}" -o /hls2rtsp ./cmd/hls2rtsp
 
 FROM alpine:3.20
 RUN apk add --no-cache ca-certificates
